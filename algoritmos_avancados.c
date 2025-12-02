@@ -41,16 +41,31 @@
     // - Em caso de colisão, use lista encadeada para tratar.
     // - Modularize com funções como inicializarHash(), buscarSuspeito(), listarAssociacoes().
 
-  #include<stdio.h>
+#include<stdio.h>
 #include<string.h>
 #include<stdlib.h>
+#include<stdbool.h>
 
 typedef struct sala {
     const char* nome;
     struct sala* esquerda;
     struct sala* direita;
+    struct pista* pistaAssociada;
 } sala;
 
+typedef struct pista {
+    const char* texto;
+    struct pista* proxima;
+} pista;
+
+// declarações de funções
+sala* criarSala(const char* nome);
+void conectarSalas(sala* sala1, sala* sala2, char direcao);
+void explorarSalas(sala* salaAtual);
+void inserirBST(pista** raiz, const char* texto);
+void buscarPista(pista* raiz, const char* texto);
+void ListarPistas(pista* raiz);
+void conectarpistas(sala* sala, const char* textoPista);
 
 //função para criar uma nova sala
 sala* criarSala(const char* nome) {// aloca memória para uma nova sala
@@ -58,6 +73,7 @@ sala* criarSala(const char* nome) {// aloca memória para uma nova sala
     novaSala->nome = nome;
     novaSala->esquerda = NULL;
     novaSala->direita = NULL;
+    novaSala->pistaAssociada = NULL;
     return novaSala;
 }
 
@@ -79,42 +95,83 @@ void explorarSalas(sala* salaAtual) {
     printf("----------------------------------\n");
     printf(" --- Estrategia de Exploracao --- \n");
     printf("----------------------------------\n");
-    printf("(E)squerda ou (D)ireita para navegar entre as salas\n");
-    printf("                             \n");
-
+    
     char escolha;// variável para armazenar a escolha do usuário
     printf("Voce esta na sala: %s \n", salaAtual->nome);// exibe o nome da sala atual
-    printf("Escolha uma direcao (E/D) ou (S) para sair: ");// solicita ao usuário que escolha uma direção
-    scanf(" %c", &escolha);// lê a escolha do usuário
+    printf("Escolha uma direcao para explorar:\n");
+    printf("(E)squerda, (D)ireita, (C)oletar pista ou (S)air\n");
+    scanf(" %c", &escolha);           
     limparBuffer(); // Limpa o buffer de entrada
     if (escolha == 'E' || escolha == 'e') {
         if (salaAtual->esquerda != NULL) {
             printf("Indo para a sala: %s\n", salaAtual->esquerda->nome);
         } else {
             printf("Nao ha sala a esquerda..\n");
-            printf("Escolha outra direcao.\n");
+            printf("Escolha a outra direcao (D).\n");
             scanf(" %c", &escolha);
+            printf(" \n");
+
         }
+
     } else if (escolha == 'D' || escolha == 'd' ) {
         if (salaAtual->direita != NULL) {
             printf("Indo para a sala: %s\n", salaAtual->direita->nome);
         } else {
             printf("Nao ha sala a direita..\n");
-            printf("Escolha outra direcao.\n");
+            printf("Escolha a outra direcao (E).\n");
             scanf(" %c", &escolha);
-
+            printf("             \n");
         }
-         } else if (escolha == 'S' || escolha == 's' ) {
-            printf("Saindo da exploracao de salas.\n");
-            printf("---------------------------------------------\n");
-            printf("        Fim da Aventura Detetive Quest       \n");
-            printf("---------------------------------------------\n");
-            exit(0);// sai da função
-        
+
+    } else if (escolha == 'C' || escolha == 'c') {
+        if (salaAtual != NULL) { 
+            printf("Coletando pistas na sala: %s\n", salaAtual->nome);//
+            if (salaAtual->pistaAssociada != NULL) {
+                printf("----------------------------------------------------\n");
+                printf("PISTA COLETADA: %s\n", salaAtual->pistaAssociada->texto);// exibe a pista associada à sala
+            } else {
+                printf("Nenhuma pista encontrada nesta sala.\n");
+            }
+        } else {
+            printf("Sala invalida.\n");
+            printf("              \n");
+        }
+     // Após coletar a pista, o jogador pode escolher outra ação
+        printf("------------------------------------------------------------\n");
+        printf("Escolha outra acao.\n");
+        printf("(E)squerda ou (D)ireita para navegar entre as salas ou (S) para sair\n");
+        scanf(" %c", &escolha);
+        printf("                \n");
+        limparBuffer(); // Limpa o buffer de entrada
+
+    } else if (escolha == 'S' || escolha == 's') {
+        (salaAtual == NULL);
+        printf("Saindo da exploracao de salas.\n");
+        printf("----------------------------------\n");
+        printf("          Fim da Aventura         \n");
+        printf("----------------------------------\n");
+        exit(0);
     } else {
-        printf("Direcao invalida. Tente novamente.\n");
+        printf("Opcao invalida. Tente novamente.\n");
     }
 }
+
+//criando pistas
+void criarpistas(sala* sala, const char* textoPista) {
+    pista* novaPista = (pista*)malloc(sizeof(pista));
+    novaPista->texto = textoPista;
+    novaPista->proxima = NULL;
+    sala->pistaAssociada = novaPista;
+}
+
+//Exibir pistas em ordem alfabética
+void ListarPistas(pista* raiz) {
+    if (raiz != NULL) {
+        ListarPistas(raiz->proxima);
+        printf("Pista: %s\n", raiz->texto);
+    }
+}
+
 int main() {
     //cabeçalho do programa
     printf("---------------------------------------------\n");
@@ -134,54 +191,40 @@ int main() {
     sala* saladeestar = criarSala("sala de estar");
     sala* sotao = criarSala("sotao");
     
+    // Conectando salas
     conectarSalas(halldeentrada, biblioteca, 'E');// Conecta hall de entrada à biblioteca à esquerda
     conectarSalas(biblioteca, cozinha, 'D');// Conecta biblioteca à cozinha à direita
-    conectarSalas(halldeentrada, saladeestar    , 'E');// Conecta hall de entrada à sala de estar à esquerda
+    conectarSalas(halldeentrada, saladeestar, 'E');// Conecta hall de entrada à sala de estar à esquerda
     conectarSalas(saladeestar, sotao, 'D');// Conecta sala de estar ao sotao à direita
 
-
-    // Liberando memoria
-    free(halldeentrada);
-    free(biblioteca);
-    free(cozinha);
-    free(saladeestar);
-    free(sotao);
+    // Criando pistas e associando-as às salas
+    criarpistas(halldeentrada, "Um sapato sujo de lama encontrado perto da porta.");
+    criarpistas(biblioteca, "Um livro antigo sobre venenos misteriosos.");  
+    criarpistas(cozinha, "Uma faca com manchas de sangue na bancada.");
+    criarpistas(saladeestar, "Um bilhete rasgado com uma mensagem ameaçadora.");
+    criarpistas(sotao, "Pegadas que levam a uma janela quebrada.");
     
-    //menu de opcões
-    int opcao;
-    printf("---------------------------------------------\n");
-    printf("           MENU DE OPCOES            \n");
-    printf(" \n");
-    printf("1. Explorar Salas\n");
-    printf("2. Sair\n");
-    printf("---------------------------------------------\n");
-    printf("Escolha uma opcao:                        \n");
-    scanf("%d", &opcao);
-    limparBuffer(); // Limpa o buffer de entrada
+    // Iniciando exploração das salas
+    explorarSalas(halldeentrada);
+    explorarSalas(biblioteca);
+    explorarSalas(cozinha);
+    explorarSalas(saladeestar);
+    explorarSalas(sotao);
+    printf("----------------------------------\n");
+    printf("Voce chegou ao fim da ultima sala!   \n");
+    printf("Agora, aqui estao todas as pistas que voce coletou durante sua aventura:\n");
+    // Exibindo todas as pistas coletadas em ordem alfabética
+    printf("--------------------------------------------------\n");
+    printf("   --------    Pistas Coletadas    ----------     \n");
+    printf("--------------------------------------------------\n");
+    ListarPistas(halldeentrada->pistaAssociada);
+    ListarPistas(biblioteca->pistaAssociada);
+    ListarPistas(cozinha->pistaAssociada);
+    ListarPistas(saladeestar->pistaAssociada);
+    ListarPistas(sotao->pistaAssociada);
 
-    switch (opcao) {
-        case 1: {
-            // Loop para explorar salas até o usuário decidir sair
-            while (1) {
-            explorarSalas(halldeentrada);
-            explorarSalas(biblioteca);
-            explorarSalas(cozinha);
-            explorarSalas(saladeestar);
-            explorarSalas(sotao);
-        }
-            break;
-        }
-        case 2:
-            printf("Saindo do jogo. Ate a proxima!\n");
-            break;
-        default:
-            printf("Opcao invalida. Tente novamente.\n");
-    }
-
-    //fim do programa
-    printf("---------------------------------------------\n");
-    printf("        Fim da Aventura Detetive Quest       \n");
-    printf("---------------------------------------------\n");
+     printf("----------------------------------\n");
+     printf("          Fim da Aventura         \n");
+     printf("----------------------------------\n");
     return 0;
 }
-
