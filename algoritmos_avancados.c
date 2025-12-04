@@ -46,17 +46,28 @@
 #include<stdlib.h>
 #include<stdbool.h>
 
-typedef struct sala {
+//tabela hash para associar suspeitos e pistas
+#define TABELA_HASH 100
+
+typedef struct sala {// estrutura para representar salas
     const char* nome;
     struct sala* esquerda;
     struct sala* direita;
     struct pista* pistaAssociada;
 } sala;
 
-typedef struct pista {
+typedef struct pista {// estrutura para representar pistas
     const char* texto;
     struct pista* proxima;
 } pista;
+
+typedef struct suspeito { // estrutura para representar suspeitos
+    const char* nome;
+    pista* pistasAssociadas;
+} suspeito;
+
+//array de ponteiros para listas encadeadas
+suspeito* tabelaHash[TABELA_HASH] = {NULL};
 
 // declarações de funções
 sala* criarSala(const char* nome);
@@ -66,6 +77,8 @@ void inserirBST(pista** raiz, const char* texto);
 void buscarPista(pista* raiz, const char* texto);
 void ListarPistas(pista* raiz);
 void conectarpistas(sala* sala, const char* textoPista);
+
+
 
 //função para criar uma nova sala
 sala* criarSala(const char* nome) {// aloca memória para uma nova sala
@@ -172,6 +185,67 @@ void ListarPistas(pista* raiz) {
     }
 }
 
+//função para inserir suspeito na tabela hash
+void inserirhash(suspeito* tabelaHash[], const char* nomeSuspeito, pista* pistaAssociada) {
+    unsigned long hash = 5381;
+    int c;
+    const char* str = nomeSuspeito;
+    while ((c = *str++)) {
+        hash = ((hash << 5) + hash) + c; // hash * 33 + c
+    }
+    int index = hash % 100; // Tamanho da tabela hash é 100
+    suspeito* novoSuspeito = (suspeito*)malloc(sizeof(suspeito));
+    novoSuspeito->nome = nomeSuspeito;
+    novoSuspeito->pistasAssociadas = pistaAssociada;
+    tabelaHash[index] = novoSuspeito;
+}
+void buscarsuspeito(suspeito* tabelaHash[], const char* nomeSuspeito) {
+    unsigned long hash = 5381;
+    int c;
+    const char* str = nomeSuspeito;
+    while ((c = *str++)) {
+        hash = ((hash << 5) + hash) + c; // hash * 33 + c
+    }
+    int index = hash % 100; // Tamanho da tabela hash é 100
+    suspeito* suspeitoEncontrado = tabelaHash[index];
+    if (suspeitoEncontrado != NULL && strcmp(suspeitoEncontrado->nome, nomeSuspeito) == 0) {
+        printf("Suspeito encontrado: %s\n", suspeitoEncontrado->nome);
+        pista* pistaAtual = suspeitoEncontrado->pistasAssociadas;
+        while (pistaAtual != NULL) {
+            printf("  Pista: %s\n", pistaAtual->texto);
+            pistaAtual = pistaAtual->proxima;
+        }
+    } else {
+        printf("Suspeito nao encontrado: %s\n", nomeSuspeito);
+    }
+}
+ void contadorSuspeitos(suspeito* tabelaHash[]) {
+    int contador = 0;
+    for (int i = 0; i < 100; i++) {
+        if (tabelaHash[i] != NULL) {
+            contador++;
+        }
+    }
+    printf("Numero de suspeitos encontrados: %d\n", contador);
+}
+
+//listar associações de suspeitos e pistas
+void listarAssociacoes(suspeito* tabelaHash[]) {
+    printf("---------------------------------------------\n");
+    printf("----- Associacoes de Suspeitos e Pistas -----\n");
+    printf("---------------------------------------------\n");
+    for (int i = 0; i < 100; i++) {
+        if (tabelaHash[i] != NULL) {
+            printf("Suspeito: %s\n", tabelaHash[i]->nome);
+            pista* pistaAtual = tabelaHash[i]->pistasAssociadas;
+            while (pistaAtual != NULL) {
+                printf("Pista: %s\n", pistaAtual->texto);
+                pistaAtual = pistaAtual->proxima;
+            }
+        }
+    }
+}
+
 int main() {
     //cabeçalho do programa
     printf("---------------------------------------------\n");
@@ -190,6 +264,7 @@ int main() {
     sala* cozinha = criarSala("cozinha");
     sala* saladeestar = criarSala("sala de estar");
     sala* sotao = criarSala("sotao");
+    suspeito* tabelaHash[TABELA_HASH] = {NULL};
     
     // Conectando salas
     conectarSalas(halldeentrada, biblioteca, 'E');// Conecta hall de entrada à biblioteca à esquerda
@@ -199,10 +274,21 @@ int main() {
 
     // Criando pistas e associando-as às salas
     criarpistas(halldeentrada, "Um sapato sujo de lama encontrado perto da porta.");
-    criarpistas(biblioteca, "Um livro antigo sobre venenos misteriosos.");  
+    criarpistas(biblioteca, "Um livro antigo sobre receitas misteriosas.");  
     criarpistas(cozinha, "Uma faca com manchas de sangue na bancada.");
-    criarpistas(saladeestar, "Um bilhete rasgado com uma mensagem ameaçadora.");
+    criarpistas(saladeestar, "Um bilhete rasgado com uma mensagem suspeita.");
     criarpistas(sotao, "Pegadas que levam a uma janela quebrada.");
+
+    //Criando suspeitos e associando pistas
+    inserirhash(tabelaHash, "Sr. Verde", halldeentrada->pistaAssociada);
+    inserirhash(tabelaHash, "Cozinheira", biblioteca->pistaAssociada);
+    inserirhash(tabelaHash, "Coronel Mostarda", cozinha->pistaAssociada);
+    inserirhash(tabelaHash, "Sra. Rosa", saladeestar->pistaAssociada);
+    inserirhash(tabelaHash, "Mordomo", sotao->pistaAssociada);
+    
+    //suspeitos encontrados
+    int contadorSuspeitos = 5; // Exemplo de contador de suspeitos encontrados
+
     
     // Iniciando exploração das salas
     explorarSalas(halldeentrada);
@@ -210,21 +296,33 @@ int main() {
     explorarSalas(cozinha);
     explorarSalas(saladeestar);
     explorarSalas(sotao);
+
     printf("----------------------------------\n");
     printf("Voce chegou ao fim da ultima sala!   \n");
-    printf("Agora, aqui estao todas as pistas que voce coletou durante sua aventura:\n");
-    // Exibindo todas as pistas coletadas em ordem alfabética
-    printf("--------------------------------------------------\n");
-    printf("   --------    Pistas Coletadas    ----------     \n");
-    printf("--------------------------------------------------\n");
-    ListarPistas(halldeentrada->pistaAssociada);
-    ListarPistas(biblioteca->pistaAssociada);
-    ListarPistas(cozinha->pistaAssociada);
-    ListarPistas(saladeestar->pistaAssociada);
-    ListarPistas(sotao->pistaAssociada);
+    printf("Agora, aqui estao todas as pistas e suspeitos que voce coletou durante sua aventura:\n");
+    
+    listarAssociacoes(tabelaHash);
+    printf("----------------------------------\n");
+    printf("Aperte Enter para Exibir o suspeito mais provavel de todo esse misterio!\n");
+    getchar(); // Espera o usuário pressionar Enter
 
-     printf("----------------------------------\n");
-     printf("          Fim da Aventura         \n");
-     printf("----------------------------------\n");
+
+    printf("----------------------------------\n");
+    printf(" ---- SUSPEITO MAIS PROVAVEL ---:\n");
+    printf("----------------------------------\n");
+
+    // Exibindo o suspeito mais provável
+    char suspeitoMaisProvavel[100] = "Sra .Rosa"; // Exemplo
+    printf("Numero de suspeitos encontrados: %d\n", contadorSuspeitos);
+    printf("O suspeito mais provavel e: %s\n", suspeitoMaisProvavel);
+    printf("Com base nas pistas coletadas, acreditamos que %s esteja envolvido(a) no misterio.\n", suspeitoMaisProvavel);
+    printf("Como um detetive habilidoso, voce desvendou o caso com sucesso!\n");
+    printf("Parabens por completar o Detetive Quest!\n");
+    printf("Obrigado por jogar. Ate a proxima aventura!\n");
+
+// Final do jogo
+    printf("----------------------------------\n");
+    printf("          Fim da Aventura         \n");
+    printf("----------------------------------\n");
     return 0;
 }
